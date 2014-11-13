@@ -4,7 +4,6 @@ import (
 	"github.com/MattParker89/seaquell/btree"
 	"github.com/MattParker89/seaquell/storage"
 	"github.com/MattParker89/seaquell/vm"
-	"log"
 )
 
 type Machine struct {
@@ -140,7 +139,7 @@ Loop:
 		case vm.OP_CREATE_TABLE:
 			pageNumber := int(v.store.GetFreePage())
 			page := storage.GetPageNumber(pageNumber)
-			page.WriteLeaf([]uint64{}, [][]byte{}, 0)
+			page.WriteLeaf([]uint64{}, [][]byte{}, nil)
 			v.R3 = int64(pageNumber)
 		}
 	}
@@ -151,7 +150,6 @@ func (m *Machine) findTableByName(name string) *table {
 		return m.master
 	}
 	records := m.master.findRecordsByFieldValue("name", name)
-	log.Println("records for %s are %v", name, records)
 	if len(records) == 0 {
 		return nil
 	}

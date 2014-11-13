@@ -21,10 +21,10 @@ Interior:
 */
 
 type Pager interface {
-	WriteLeaf(keys []uint64, values [][]byte, rightPtr uint64)
+	WriteLeaf(keys []uint64, values [][]byte, rightPtr Pager)
 	WriteInterior(keys []uint64, children []Pager)
 	FetchInterior() ([]uint64, []Pager)
-	FetchLeaf() ([]uint64, [][]byte)
+	FetchLeaf() ([]uint64, [][]byte, Pager)
 	Free()
 	Offset() uint64
 	Type() NodeType
@@ -60,7 +60,7 @@ func NewPage() *page {
 	}
 }
 
-func (p *page) WriteLeaf(keys []uint64, values [][]byte, rightPtr uint64) {
+func (p *page) WriteLeaf(keys []uint64, values [][]byte, rightPtr Pager) {
 	p.header.nodeType = LEAF_NODE
 	p.buffer = [page_length]byte{}
 
@@ -91,6 +91,9 @@ func (p *page) WriteLeaf(keys []uint64, values [][]byte, rightPtr uint64) {
 		binary.LittleEndian.PutUint16(p.buffer[cellPointer:cellPointer+2], uint16(p.header.cellContentArea))
 		cellPointer += 2
 		p.header.numberOfCells += 1
+	}
+	if rightPtr != nil {
+		p.header.rightMostPointer = rightPtr.Offset()
 	}
 	p.writeHeader()
 	store.writeHeader()
@@ -193,14 +196,11 @@ func (p *page) NumberOfKeys() uint16 {
 func (p *page) fetch() {
 	copy(p.buffer[:], store.Get(p.offset, page_length))
 }
-func (p *page) FetchLeaf() ([]uint64, [][]byte) {
+func (p *page) FetchLeaf() (keys []uint64, values [][]byte, rightPtr Pager) {
 	if !p.isFetched() {
 		p.fetch()
 	}
 	p.parseHeader()
-
-	keys := []uint64{}
-	vals := [][]byte{}
 
 	for i := 0; i < int(p.header.numberOfCells); i++ {
 		//go through the cell pointer array and find the offset
@@ -225,10 +225,18 @@ func (p *page) FetchLeaf() ([]uint64, [][]byte) {
 		copy(v, val)
 
 		keys = append(keys, uint64(key))
-		vals = append(vals, v)
+		values = append(values, v)
 	}
 
-	return keys, vals
+	var rightPage Pager = nil
+	if p.header.rightMostPointer != 0 {
+		rightPage = &page{
+			offset: p.header.rightMostPointer,
+			header: NewPageHeader(),
+		}
+	}
+
+	return keys, values, rightPage
 }
 
 func (p *page) parseHeader() {
@@ -242,6 +250,8 @@ func (p *page) parseHeader() {
 	numberCellsBytes := p.buffer[btreePageHeaderConfig[number_of_cells].offset : btreePageHeaderConfig[number_of_cells].offset+btreePageHeaderConfig[number_of_cells].size]
 	p.header.numberOfCells = binary.LittleEndian.Uint16(numberCellsBytes)
 
+	rightPtrBytes := p.buffer[btreePageHeaderConfig[right_most_pointer].offset : btreePageHeaderConfig[right_most_pointer].offset+btreePageHeaderConfig[right_most_pointer].size]
+	p.header.rightMostPointer = binary.LittleEndian.Uint64(rightPtrBytes)
 	p.cellPointers = p.buffer[p.header.cellPointerArray : p.header.cellPointerArray+p.header.numberOfCells*2]
 
 	nodeTypeBytes := p.buffer[btreePageHeaderConfig[node_type].offset]
@@ -251,6 +261,7 @@ func (p *page) parseHeader() {
 func (p *page) writeHeader() {
 	binary.LittleEndian.PutUint16(p.buffer[btreePageHeaderConfig[cell_pointer_array].offset:btreePageHeaderConfig[cell_pointer_array].offset+btreePageHeaderConfig[cell_pointer_array].size], p.header.cellPointerArray)
 	binary.LittleEndian.PutUint16(p.buffer[btreePageHeaderConfig[number_of_cells].offset:btreePageHeaderConfig[number_of_cells].offset+btreePageHeaderConfig[number_of_cells].size], p.header.numberOfCells)
+	binary.LittleEndian.PutUint64(p.buffer[btreePageHeaderConfig[right_most_pointer].offset:btreePageHeaderConfig[right_most_pointer].offset+btreePageHeaderConfig[right_most_pointer].size], p.header.rightMostPointer)
 	kb := p.header.nodeType.Byte()
 	p.buffer[btreePageHeaderConfig[node_type].offset] = kb
 }

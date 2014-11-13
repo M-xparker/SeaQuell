@@ -55,9 +55,10 @@ func (l *leafNode) insert(key uint64, value []byte) *interiorNode {
 }
 
 func (l *leafNode) write() {
-	var rightPtr uint64
+	var rightPtr storage.Pager
 	if l.right != nil {
-		rightPtr = l.right.page.Offset()
+		fmt.Print("l.right is", l.right)
+		rightPtr = l.right.page
 	}
 	l.isFetched = true
 	l.page.WriteLeaf(l.keys, l.values, rightPtr)
@@ -108,12 +109,15 @@ func (l *leafNode) Fetch(key uint64) {
 	if l.isFetched {
 		return
 	}
-	keys, vals := l.page.FetchLeaf()
+	keys, vals, rightPage := l.page.FetchLeaf()
 	if len(keys) == 0 {
 		return
 	}
 	l.keys = keys
 	l.values = vals
+	if rightPage != nil {
+		l.right = &leafNode{page: rightPage}
+	}
 	l.isFetched = true
 }
 

@@ -2,7 +2,6 @@ package machine
 
 import (
 	"github.com/MattParker89/seaquell/btree"
-	"log"
 )
 
 type table struct {
@@ -32,7 +31,6 @@ func (t *table) findRecordWithID(id int64) map[string]interface{} {
 
 func (t *table) findRecordsByFieldValue(field string, value interface{}) []map[string]interface{} {
 	records := []map[string]interface{}{}
-	log.Printf("field is %s and value is %v\n", field, value)
 	for t.tree.CursorFront(); t.tree.CursorAvailable(); t.tree.CursorNext() {
 		data := t.tree.CursorData()
 		record := t.recordFromBytes(data)

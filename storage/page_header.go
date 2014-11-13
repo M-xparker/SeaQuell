@@ -47,6 +47,7 @@ type pageHeader struct {
 	numberOfCells               uint16
 	numberOfFragmentedFreeBytes uint16
 	overflowPage                uint32
+	rightMostPointer            uint64
 }
 
 func NewPageHeader() *pageHeader {

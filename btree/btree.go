@@ -38,9 +38,12 @@ func Fetch(number int) *BTree {
 		l := &leafNode{
 			page: rootPage,
 		}
-		keys, vals := l.page.FetchLeaf()
+		keys, vals, rightPage := l.page.FetchLeaf()
 		l.keys = keys
 		l.values = vals
+		if rightPage != nil {
+			l.right = &leafNode{page: rightPage}
+		}
 		return &BTree{
 			root: l,
 		}
