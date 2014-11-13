@@ -56,7 +56,7 @@ type page struct {
 func NewPage() *page {
 	return &page{
 		header: NewPageHeader(),
-		offset: store.GetFreePage(),
+		offset: store.GetFreePage()*page_length + db_header_length + 1,
 	}
 }
 
