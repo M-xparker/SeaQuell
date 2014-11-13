@@ -74,6 +74,8 @@ Loop:
 				}
 			}
 			node.values = append(node.values, number)
+		case tokenString:
+			node.values = append(node.values, i.val)
 		case tokenSemiColon:
 			break Loop
 		}
@@ -129,6 +131,7 @@ Loop:
 		case tokenStar:
 			s.hasStar = true
 		case tokenSpace:
+		case tokenComma:
 		case tokenSemiColon:
 			break Loop
 		default:
